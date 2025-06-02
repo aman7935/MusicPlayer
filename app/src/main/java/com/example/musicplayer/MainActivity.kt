@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.provider.MediaStore
+import android.view.View
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +29,7 @@ import com.example.musicplayer.Utils.ACTION_PLAY_PAUSE
 import com.example.musicplayer.Utils.ACTION_PREV
 import com.example.musicplayer.databinding.ActivityMainBinding
 import com.example.musicplayer.datamodel.MusicInfo
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -119,6 +121,13 @@ class MainActivity : AppCompatActivity() {
 
         checkPermission()
 
+       /* val bottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
+
+        bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN*/
+
+        binding.bottomSheet.visibility = View.GONE
+
+
     }
 
     private fun checkPermission() { //it
@@ -137,7 +146,8 @@ class MainActivity : AppCompatActivity() {
 
 
     override fun onRequestPermissionsResult(
-        //what to do after the permission is granted or denied it only checks for the first time if the permission is given or not
+        /*what to do after the permission is granted or
+        denied it only checks for the first time if the permission is given or not*/
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
@@ -145,11 +155,11 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 101 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             fetchMusic()
+
         }
     }
 
     private fun fetchMusic() {
-
 
         val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val projection = arrayOf(
@@ -188,6 +198,13 @@ class MainActivity : AppCompatActivity() {
             binding.recyclerView.layoutManager = LinearLayoutManager(this)
             binding.recyclerView.adapter = MusicAdapter(musicList, object : OnItemClickListener {
                 override fun onClick(data: MusicInfo, p: Int) {
+                    /*val bottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
+                    bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED*/
+                    binding.seekBar.max = data.duration.toInt()
+                    binding.bottomSheet.visibility  = View.VISIBLE
+
+                    binding.name.text = data.title
+
                     musicService?.playMusic(data.data)
                     position = p;
                     Toast.makeText(this@MainActivity, "$p", Toast.LENGTH_LONG).show()

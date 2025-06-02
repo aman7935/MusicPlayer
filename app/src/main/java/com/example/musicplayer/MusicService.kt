@@ -48,6 +48,7 @@ class MusicService : Service() {
         }
     }
 
+
     @SuppressLint("ForegroundServiceType")
     private fun showNotification(title: String, content: String) {
         val channelId = "music_channel"
