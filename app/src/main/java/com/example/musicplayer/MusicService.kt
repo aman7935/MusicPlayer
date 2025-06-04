@@ -18,8 +18,10 @@ import com.example.musicplayer.Utils.ACTION_PREV
 
 class MusicService : Service() {
 
-    private var mediaPlayer: MediaPlayer? = null
+    internal var mediaPlayer: MediaPlayer? = null
     private val binder = MusicBinder()
+
+
 
     inner class MusicBinder : Binder() {
         fun getService(): MusicService = this@MusicService
@@ -29,6 +31,7 @@ class MusicService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         showNotification("Music Player", "Playing Music")
+
         return START_STICKY
     }
 
@@ -64,11 +67,6 @@ class MusicService : Service() {
             manager?.createNotificationChannel(channel)
         }
 
-//        val intent = Intent(this, Receiver::class.java).apply {
-//            putExtra("Message" , "Clicked")
-//        }
-
-
         val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) FLAG_IMMUTABLE else 0
 
         val pendingIntentPrev = PendingIntent.getBroadcast(this, 0, Intent(ACTION_PREV), flag)
@@ -79,9 +77,9 @@ class MusicService : Service() {
             .setContentTitle(title)
             .setContentText(content)
             .setSmallIcon(R.drawable.baseline_music_note_24)
-            .addAction(R.drawable.previous_back_direction_svgrepo_com, "Previous", pendingIntentPrev)
-            .addAction(R.drawable.pause_svgrepo_com, "pause", pendingIntentPlayPause)
-            .addAction(R.drawable.next_svgrepo_com, "Next", pendingIntentNext)
+            .addAction(0, "Previous", pendingIntentPrev)
+            .addAction(0, "pause", pendingIntentPlayPause)
+            .addAction(0, "Next", pendingIntentNext)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 

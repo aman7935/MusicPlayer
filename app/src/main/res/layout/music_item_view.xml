@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    app:cardCornerRadius="34dp"
-    android:backgroundTint="@color/black"
-    android:layout_marginTop="3dp"
+    android:layout_marginStart="10dp"
     android:layout_height="wrap_content">
 
     <LinearLayout
@@ -18,26 +16,48 @@
         <TextView
             android:id="@+id/title"
             android:layout_width="match_parent"
-            android:layout_marginStart="5dp"
-            android:textColor="@color/white"
+            android:textSize="20dp"
+            android:singleLine="true"
+            android:textColor="#A5C0FF"
             android:layout_height="wrap_content"
             android:text="Title"/>
 
-        <TextView
-            android:id="@+id/artist"
-            android:layout_marginTop="3dp"
-            android:layout_marginStart="5dp"
-            android:textColor="@color/white"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Artist"
-            />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0.5dp"
-            android:layout_marginTop="3dp"
-            android:background="@color/white"/>
+            android:orientation="horizontal">
+
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:textColor="#D3045D"
+                android:background="@drawable/hq_background"
+                android:textSize="10dp"
+                android:layout_marginBottom="1dp"
+                android:paddingHorizontal="3dp"
+                android:text="HQ"/>
+
+
+
+            <TextView
+                android:id="@+id/artist"
+                android:layout_marginTop="3dp"
+                android:layout_marginStart="5dp"
+                android:textColor="#A5C0FF"
+                android:gravity="bottom"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+
+                android:text="Artist"
+                />
+
+        </LinearLayout>
+
+
+
 
 
     </LinearLayout>
@@ -46,4 +66,4 @@
 
 
 
-</androidx.cardview.widget.CardView>
+</FrameLayout>

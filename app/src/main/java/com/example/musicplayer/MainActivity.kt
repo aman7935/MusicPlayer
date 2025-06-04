@@ -3,42 +3,44 @@ package com.example.musicplayer
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.ComponentName
+import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
-import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.MediaStore
+import android.util.Log
 import android.view.View
+import android.widget.SeekBar
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.transition.AutoTransition
+import androidx.transition.Transition
+import androidx.transition.TransitionManager
 import com.example.musicplayer.Utils.ACTION_NEXT
 import com.example.musicplayer.Utils.ACTION_PLAY_PAUSE
 import com.example.musicplayer.Utils.ACTION_PREV
 import com.example.musicplayer.databinding.ActivityMainBinding
 import com.example.musicplayer.datamodel.MusicInfo
-import com.google.android.material.bottomsheet.BottomSheetBehavior
 
-class MainActivity : AppCompatActivity() {
+
+class MainActivity : AppCompatActivity(), SendAndReceive {
     private lateinit var binding: ActivityMainBinding
     private var musicService: MusicService? = null
     var isBound = false
     val musicList = mutableListOf<MusicInfo>()
-    private var position = 0
-    private var firstIndex = 0
-    private val lastIndex = 0
+    internal var position = 0
+    private val isPlaying = false
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(
@@ -61,34 +63,52 @@ class MainActivity : AppCompatActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 ACTION_PREV -> {
-
                     if (position != 0) {
-                        Toast.makeText(context, "Previous button is clicked", Toast.LENGTH_LONG)
-                            .show()
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Previous button is clicked",
+                            Toast.LENGTH_LONG
+                        ).show()
                         position--
+                        binding.name.text = musicList[position].title
                         musicService?.playMusic(musicList[position].data)
                     }
                 }
 
-                ACTION_PLAY_PAUSE -> {
-                    Toast.makeText(context, "Play pause button is clicked", Toast.LENGTH_LONG)
-                        .show()
-                }
+                ACTION_PLAY_PAUSE -> pauseBtn()
 
-                ACTION_NEXT -> {
-                    Toast.makeText(context, "Next button is clicked", Toast.LENGTH_LONG).show()
-                    if (position != musicList.lastIndex) {
-                        position++
-                        musicService?.playMusic(musicList[position].data)
-                        Toast.makeText(this@MainActivity, "$position", Toast.LENGTH_LONG).show()
-                    }
-                }
-
+                ACTION_NEXT -> nextBtn()
                 else -> "Unknown action"
             }
         }
     }
 
+    private fun pauseBtn() {
+        Toast.makeText(this@MainActivity, "Play pause button is clicked", Toast.LENGTH_LONG)
+            .show()
+        if (musicService?.mediaPlayer?.isPlaying == true) {
+            musicService?.mediaPlayer?.pause()
+
+            binding.playPauseBtn.setImageResource(R.drawable.play_button_svgrepo_com)
+        } else {
+            musicService?.mediaPlayer?.start()
+            binding.playPauseBtn.setImageResource(R.drawable.pause_svgrepo_com)
+        }
+    }
+
+    private fun nextBtn() {
+        Toast.makeText(this@MainActivity, "Next button is clicked", Toast.LENGTH_LONG).show()
+        if (position != musicList.lastIndex) {
+            position++
+            binding.name.text = musicList[position].title
+            musicService?.playMusic(musicList[position].data)
+            binding.playPauseBtn.setImageResource(R.drawable.pause_svgrepo_com)
+            Toast.makeText(this@MainActivity, "$position", Toast.LENGTH_LONG).show()
+        }
+    }
+
+
+    @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onStart() {
         super.onStart()
@@ -97,7 +117,7 @@ class MainActivity : AppCompatActivity() {
             addAction(ACTION_PLAY_PAUSE)
             addAction(ACTION_NEXT)
         }
-        registerReceiver(notificationReceiver, filter)
+        registerReceiver(notificationReceiver, filter, RECEIVER_EXPORTED)
         Intent(this, MusicService::class.java).also {
             ContextCompat.startForegroundService(this, it)
             bindService(it, connection, BIND_AUTO_CREATE)
@@ -118,16 +138,51 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         checkPermission()
-
-       /* val bottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
-
-        bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN*/
-
         binding.bottomSheet.visibility = View.GONE
+        setUpButtons()
+        binding.name.isSelected = true
 
 
+
+        binding.name.setOnClickListener {
+            val sheet = BottomSheet(position, musicList)
+
+            sheet.show(supportFragmentManager, "BottomSheet")
+        }
+
+
+        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(
+                seekBar: SeekBar?,
+                progress: Int,
+                fromUser: Boolean
+            ) {
+                if (fromUser) {
+                    musicService?.mediaPlayer?.seekTo(progress)
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+            }
+        })
+    }
+
+    private fun setUpButtons() {
+        binding.apply {
+
+            playPauseBtn.setOnClickListener {
+                pauseBtn()
+            }
+            nextBtn.setOnClickListener {
+                nextBtn()
+            }
+
+
+        }
     }
 
     private fun checkPermission() { //it
@@ -171,6 +226,7 @@ class MainActivity : AppCompatActivity() {
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} !=0"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} DESC"
 
+
         val cursor = contentResolver.query(
             uri,
             projection,
@@ -195,21 +251,75 @@ class MainActivity : AppCompatActivity() {
                 musicList.add(music)
             }
 
+
             binding.recyclerView.layoutManager = LinearLayoutManager(this)
             binding.recyclerView.adapter = MusicAdapter(musicList, object : OnItemClickListener {
                 override fun onClick(data: MusicInfo, p: Int) {
-                    /*val bottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
-                    bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED*/
                     binding.seekBar.max = data.duration.toInt()
-                    binding.bottomSheet.visibility  = View.VISIBLE
+                    TransitionManager.beginDelayedTransition(binding.main, AutoTransition())
+                    binding.bottomSheet.visibility = View.VISIBLE
+                    binding.playPauseBtn.setImageResource(R.drawable.pause_svgrepo_com)
+
 
                     binding.name.text = data.title
-
                     musicService?.playMusic(data.data)
                     position = p;
-                    Toast.makeText(this@MainActivity, "$p", Toast.LENGTH_LONG).show()
+
+                    initSeekBar()
+
                 }
             })
+        }
+    }
+
+    fun initSeekBar() {
+        val handler = Handler(Looper.getMainLooper())
+
+        handler.postDelayed(object : Runnable {
+            @SuppressLint("DefaultLocale")
+            override fun run() {
+                try {
+                    binding.seekBar.progress = musicService?.mediaPlayer!!.currentPosition
+                    binding.text2.text = String.format(
+                        "%02d:%02d",
+                        (musicService?.mediaPlayer!!.currentPosition / 1000 / 60),
+                        (musicService?.mediaPlayer!!.currentPosition / 1000 % 60)
+                    )
+                    binding.totalDuration.text = String.format(
+                        "%02d:%02d",
+                        (musicService?.mediaPlayer!!.duration / 1000 / 60),
+                        (musicService?.mediaPlayer!!.duration / 1000 % 60)
+                    )
+                    binding.seekBar.max = musicService?.mediaPlayer!!.duration
+                    Log.d(TAG, "run:${musicService?.mediaPlayer!!.duration}")
+
+                    handler.postDelayed(this, 1000)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    binding.seekBar.progress = 0
+                }
+            }
+        }, 0)
+    }
+
+    override fun nextSong(position: Int) {
+        Log.d(TAG, "sendData $position")
+        if (position != musicList.lastIndex){
+            musicService?.playMusic(musicList[position].data)
+        }
+    }
+
+    override fun pauseSong() {
+        if (position != 0){
+
+            musicService?.mediaPlayer?.stop()
+        }
+    }
+
+    override fun prevSong(position: Int) {
+        if (position != 0){
+            musicService?.playMusic(musicList[position].data)
+
         }
     }
 
