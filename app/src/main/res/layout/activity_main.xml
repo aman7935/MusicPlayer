@@ -53,8 +53,8 @@
             android:id="@+id/seekBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:thumbTint="#D3045D"
-            android:progressTint="#D3045D"
+            android:thumbTint="@color/redColor"
+            android:progressTint="@color/redColor"
             android:layout_marginStart="8dp" />
 
         <LinearLayout

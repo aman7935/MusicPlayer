@@ -5,6 +5,19 @@
     android:layout_height="match_parent"
     android:background="#091227">
 
+
+    <ImageView
+        android:id="@+id/lineBtn"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        android:layout_marginTop="12dp"
+        android:src="@drawable/horizontal_line_svgrepo_com"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:visibility="gone"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <ImageView
         android:id="@+id/downBtn"
         android:layout_width="34dp"
@@ -89,8 +102,8 @@
         android:id="@+id/seekBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:thumbTint="@color/white"
-        android:progressTint="@color/white"
+        android:thumbTint="@color/redColor"
+        android:progressTint="@color/redColor"
         android:layout_marginTop="15sp"
         app:layout_constraintTop_toBottomOf="@id/linearLayout"/>
 
@@ -109,13 +122,15 @@
             android:id="@+id/previousBtn"
             android:layout_width="45dp"
             android:layout_height="45dp"
+            android:layout_marginRight="3dp"
             android:src="@drawable/previous_back_direction_svgrepo_com" />
 
         <ImageView
             android:id="@+id/playPauseBtn"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:layout_marginHorizontal="25dp"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:layout_marginLeft="28dp"
+            android:layout_marginRight="20dp"
             android:src="@drawable/pause_svgrepo_com" />
 
         <ImageView

@@ -1,15 +1,11 @@
 package com.example.musicplayer
 
-import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
-import android.os.Bundle
-import android.os.Handler
-import android.os.IBinder
-import android.os.Looper
+import android.os.*
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,12 +17,18 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
-class BottomSheet(private var position: Int, private val musicList: MutableList<MusicInfo>) : BottomSheetDialogFragment() {
+class BottomSheet(
+    private var position: Int,
+    private val musicList: MutableList<MusicInfo>
+) : BottomSheetDialogFragment() {
 
     private lateinit var binding: MusicBottomSheetBinding
     private var sendAndReceive: SendAndReceive? = null
     private var musicService: MusicService? = null
     private var isBound = false
+
+    private lateinit var handler: Handler
+    private lateinit var updateSeekBarRunnable: Runnable
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -51,7 +53,7 @@ class BottomSheet(private var position: Int, private val musicList: MutableList<
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         binding = MusicBottomSheetBinding.inflate(layoutInflater)
         binding.name.isSelected = true
         return binding.root
@@ -64,14 +66,13 @@ class BottomSheet(private var position: Int, private val musicList: MutableList<
         binding.totalDuration.text = formatTime(musicList[position].duration)
 
         binding.downBtn.setOnClickListener { dismiss() }
-        initSeekBar()
 
         binding.nextBtn.setOnClickListener {
             if (position != musicList.lastIndex) {
                 position++
                 sendAndReceive?.nextSong(position)
                 binding.name.text = musicList[position].title
-                Toast.makeText(requireContext(), "$position", Toast.LENGTH_LONG).show()
+                binding.totalDuration.text = formatTime(musicList[position].duration)
             }
         }
 
@@ -79,7 +80,7 @@ class BottomSheet(private var position: Int, private val musicList: MutableList<
             musicService?.mediaPlayer?.let { player ->
                 if (player.isPlaying) {
                     player.pause()
-                    binding.playPauseBtn.setImageResource(R.drawable.play_button_svgrepo_com)
+                    binding.playPauseBtn.setImageResource(R.drawable.play_svgrepo_com)
                 } else {
                     player.start()
                     binding.playPauseBtn.setImageResource(R.drawable.pause_svgrepo_com)
@@ -91,15 +92,17 @@ class BottomSheet(private var position: Int, private val musicList: MutableList<
             if (position != 0) {
                 position--
                 binding.name.text = musicList[position].title
+                binding.totalDuration.text = formatTime(musicList[position].duration)
                 sendAndReceive?.prevSong(position)
             }
         }
+
+        initSeekBar()
     }
 
     private fun initSeekBar() {
-        val handler = Handler(Looper.getMainLooper())
-
-        handler.postDelayed(object  : Runnable{
+        handler = Handler(Looper.getMainLooper())
+        updateSeekBarRunnable = object : Runnable {
             override fun run() {
                 musicService?.mediaPlayer?.let { player ->
                     if (player.isPlaying) {
@@ -109,8 +112,21 @@ class BottomSheet(private var position: Int, private val musicList: MutableList<
                         binding.seekBar.max = player.duration
                     }
                 }
+                handler.postDelayed(this, 500)
             }
-        }, 0)
+        }
+        handler.post(updateSeekBarRunnable)
+
+        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    musicService?.mediaPlayer?.seekTo(progress)
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
     }
 
     private fun formatTime(ms: Long): String {
@@ -121,7 +137,6 @@ class BottomSheet(private var position: Int, private val musicList: MutableList<
 
     override fun onStart() {
         super.onStart()
-
         val dialog = dialog as? BottomSheetDialog
         val bottomSheet = dialog?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
         bottomSheet?.layoutParams?.height = ViewGroup.LayoutParams.MATCH_PARENT
@@ -129,6 +144,25 @@ class BottomSheet(private var position: Int, private val musicList: MutableList<
             val behavior = BottomSheetBehavior.from(it)
             behavior.state = BottomSheetBehavior.STATE_EXPANDED
             behavior.skipCollapsed = true
+            behavior.addBottomSheetCallback(object  : BottomSheetBehavior.BottomSheetCallback(){
+                override fun onStateChanged(bottomSheet: View, newState: Int) {
+                    if (behavior.state == BottomSheetBehavior.STATE_COLLAPSED || behavior.state == BottomSheetBehavior.STATE_HIDDEN){
+                        dismiss()
+                    }
+                }
+
+                override fun onSlide(bottomSheet: View, slideOffset: Float) {
+                    if (slideOffset <0.96){
+                        binding.downBtn.visibility = View.INVISIBLE
+                        binding.lineBtn.visibility = View.VISIBLE
+                    }
+                    else{
+                        binding.downBtn.visibility = View.VISIBLE
+                        binding.lineBtn.visibility = View.INVISIBLE
+                    }
+                }
+
+            })
         }
 
         Intent(requireContext(), MusicService::class.java).also {
@@ -138,6 +172,10 @@ class BottomSheet(private var position: Int, private val musicList: MutableList<
 
     override fun onStop() {
         super.onStop()
+        if (::handler.isInitialized && ::updateSeekBarRunnable.isInitialized) {
+            handler.removeCallbacks(updateSeekBarRunnable)
+        }
+
         if (isBound) {
             requireContext().unbindService(connection)
             isBound = false

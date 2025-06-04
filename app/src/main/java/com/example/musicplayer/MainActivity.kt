@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity(), SendAndReceive {
         if (musicService?.mediaPlayer?.isPlaying == true) {
             musicService?.mediaPlayer?.pause()
 
-            binding.playPauseBtn.setImageResource(R.drawable.play_button_svgrepo_com)
+            binding.playPauseBtn.setImageResource(R.drawable.play_svgrepo_com)
         } else {
             musicService?.mediaPlayer?.start()
             binding.playPauseBtn.setImageResource(R.drawable.pause_svgrepo_com)
@@ -305,6 +305,7 @@ class MainActivity : AppCompatActivity(), SendAndReceive {
     override fun nextSong(position: Int) {
         Log.d(TAG, "sendData $position")
         if (position != musicList.lastIndex){
+            binding.name.text = musicList[position].title
             musicService?.playMusic(musicList[position].data)
         }
     }
