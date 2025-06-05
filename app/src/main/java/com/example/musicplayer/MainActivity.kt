@@ -94,6 +94,7 @@ class MainActivity : AppCompatActivity(), SendAndReceive {
             musicService?.mediaPlayer?.start()
             binding.playPauseBtn.setImageResource(R.drawable.pause_svgrepo_com)
         }
+        musicService?.showNotification("Music", musicList[position].data.substringAfterLast("/"))
     }
 
     private fun nextBtn() {
@@ -124,14 +125,13 @@ class MainActivity : AppCompatActivity(), SendAndReceive {
         }
     }
 
-    override fun onStop() {
-        super.onStop()
+    override fun onDestroy() {
+        super.onDestroy()
         unregisterReceiver(notificationReceiver)
         if (isBound) {
             unbindService(connection)
             isBound = false
         }
-
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -302,11 +302,13 @@ class MainActivity : AppCompatActivity(), SendAndReceive {
         }, 0)
     }
 
-    override fun nextSong(position: Int) {
-        Log.d(TAG, "sendData $position")
-        if (position != musicList.lastIndex){
-            binding.name.text = musicList[position].title
-            musicService?.playMusic(musicList[position].data)
+    override fun nextSong(p: Int) {
+        Log.d(TAG, "sendData $p")
+        val lastIndex = musicList.lastIndex+1
+        if (p != lastIndex){
+            binding.name.text = musicList[p].title
+            position = p
+            musicService?.playMusic(musicList[p].data)
         }
     }
 
@@ -318,10 +320,8 @@ class MainActivity : AppCompatActivity(), SendAndReceive {
     }
 
     override fun prevSong(position: Int) {
-        if (position != 0){
+            binding.name.text = musicList[position].title
             musicService?.playMusic(musicList[position].data)
-
-        }
     }
 
 

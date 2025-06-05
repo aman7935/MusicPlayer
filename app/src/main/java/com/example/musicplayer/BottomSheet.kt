@@ -1,11 +1,14 @@
 package com.example.musicplayer
 
+import android.app.PendingIntent
 import android.content.ComponentName
+import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -35,6 +38,7 @@ class BottomSheet(
             val localBinder = service as MusicService.MusicBinder
             musicService = localBinder.getService()
             isBound = true
+            updateUI()
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -55,6 +59,12 @@ class BottomSheet(
         savedInstanceState: Bundle?
     ): View {
         binding = MusicBottomSheetBinding.inflate(layoutInflater)
+
+        Intent(requireContext(), MusicService::class.java).also {
+            requireContext().bindService(it, connection, BIND_AUTO_CREATE)
+        }
+
+        initSeekBar()
         binding.name.isSelected = true
         return binding.root
     }
@@ -62,42 +72,38 @@ class BottomSheet(
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.name.text = musicList[position].data.substringAfterLast("/")
-        binding.totalDuration.text = formatTime(musicList[position].duration)
-
         binding.downBtn.setOnClickListener { dismiss() }
 
         binding.nextBtn.setOnClickListener {
-            if (position != musicList.lastIndex) {
+            val lastIndex = musicList.lastIndex
+            if (position < lastIndex) {
                 position++
                 sendAndReceive?.nextSong(position)
-                binding.name.text = musicList[position].title
-                binding.totalDuration.text = formatTime(musicList[position].duration)
+                Log.d(TAG, "Next song: $position :: ${musicList[position].title}")
+                updateUI()
             }
         }
 
         binding.playPauseBtn.setOnClickListener {
             musicService?.mediaPlayer?.let { player ->
+                val intent = Intent(Utils.ACTION_PLAY_PAUSE)
+                requireContext().sendBroadcast(intent)
                 if (player.isPlaying) {
-                    player.pause()
                     binding.playPauseBtn.setImageResource(R.drawable.play_svgrepo_com)
                 } else {
-                    player.start()
                     binding.playPauseBtn.setImageResource(R.drawable.pause_svgrepo_com)
                 }
             }
         }
 
         binding.previousBtn.setOnClickListener {
-            if (position != 0) {
+            if (position > 0) {
                 position--
-                binding.name.text = musicList[position].title
-                binding.totalDuration.text = formatTime(musicList[position].duration)
                 sendAndReceive?.prevSong(position)
+                Log.d(TAG, "Previous song: $position :: ${musicList[position].title}")
+                updateUI()
             }
         }
-
-        initSeekBar()
     }
 
     private fun initSeekBar() {
@@ -105,12 +111,10 @@ class BottomSheet(
         updateSeekBarRunnable = object : Runnable {
             override fun run() {
                 musicService?.mediaPlayer?.let { player ->
-                    if (player.isPlaying) {
-                        val currentPosition = player.currentPosition
-                        binding.seekBar.progress = currentPosition
-                        binding.text2.text = formatTime(currentPosition.toLong())
-                        binding.seekBar.max = player.duration
-                    }
+                    val currentPosition = player.currentPosition
+                    binding.seekBar.progress = currentPosition
+                    binding.text2.text = formatTime(currentPosition.toLong())
+                    binding.seekBar.max = player.duration
                 }
                 handler.postDelayed(this, 500)
             }
@@ -129,6 +133,17 @@ class BottomSheet(
         })
     }
 
+    private fun updateUI() {
+        musicService?.mediaPlayer?.let { player ->
+            binding.name.text = musicList[position].data.substringAfterLast("/")
+            binding.totalDuration.text = formatTime(musicList[position].duration)
+            binding.playPauseBtn.setImageResource(
+                if (player.isPlaying) R.drawable.pause_svgrepo_com
+                else R.drawable.play_svgrepo_com
+            )
+        }
+    }
+
     private fun formatTime(ms: Long): String {
         val minutes = ms / 1000 / 60
         val seconds = ms / 1000 % 60
@@ -144,29 +159,18 @@ class BottomSheet(
             val behavior = BottomSheetBehavior.from(it)
             behavior.state = BottomSheetBehavior.STATE_EXPANDED
             behavior.skipCollapsed = true
-            behavior.addBottomSheetCallback(object  : BottomSheetBehavior.BottomSheetCallback(){
+            behavior.addBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
                 override fun onStateChanged(bottomSheet: View, newState: Int) {
-                    if (behavior.state == BottomSheetBehavior.STATE_COLLAPSED || behavior.state == BottomSheetBehavior.STATE_HIDDEN){
+                    if (newState == BottomSheetBehavior.STATE_COLLAPSED || newState == BottomSheetBehavior.STATE_HIDDEN) {
                         dismiss()
                     }
                 }
 
                 override fun onSlide(bottomSheet: View, slideOffset: Float) {
-                    if (slideOffset <0.96){
-                        binding.downBtn.visibility = View.INVISIBLE
-                        binding.lineBtn.visibility = View.VISIBLE
-                    }
-                    else{
-                        binding.downBtn.visibility = View.VISIBLE
-                        binding.lineBtn.visibility = View.INVISIBLE
-                    }
+                    binding.downBtn.visibility = if (slideOffset < 0.96f) View.INVISIBLE else View.VISIBLE
+                    binding.lineBtn.visibility = if (slideOffset < 0.96f) View.VISIBLE else View.INVISIBLE
                 }
-
             })
-        }
-
-        Intent(requireContext(), MusicService::class.java).also {
-            requireContext().bindService(it, connection, BIND_AUTO_CREATE)
         }
     }
 

@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#091227">
+        android:background="@color/page_background">
 
 
     <ImageView
@@ -85,7 +85,7 @@
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:textColor="#A5C0FF"
-            android:text="text" />
+            android:text="00:00" />
 
         <TextView
             android:id="@+id/total_duration"
@@ -130,8 +130,7 @@
             android:layout_width="45dp"
             android:layout_height="45dp"
             android:layout_marginLeft="28dp"
-            android:layout_marginRight="20dp"
-            android:src="@drawable/pause_svgrepo_com" />
+            android:layout_marginRight="20dp" />
 
         <ImageView
             android:id="@+id/nextBtn"

@@ -11,6 +11,8 @@ import android.media.MediaPlayer
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.widget.RemoteViews
+import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.example.musicplayer.Utils.ACTION_NEXT
 import com.example.musicplayer.Utils.ACTION_PLAY_PAUSE
@@ -20,7 +22,6 @@ class MusicService : Service() {
 
     internal var mediaPlayer: MediaPlayer? = null
     private val binder = MusicBinder()
-
 
 
     inner class MusicBinder : Binder() {
@@ -42,7 +43,7 @@ class MusicService : Service() {
                 setDataSource(path)
                 setOnPreparedListener {
                     it.start()
-                    showNotification("Music Player", path.substringAfterLast("/"))
+                    showNotification("Music", path.substringAfterLast("/"))
                 }
                 prepareAsync()
             } catch (e: Exception) {
@@ -53,7 +54,8 @@ class MusicService : Service() {
 
 
     @SuppressLint("ForegroundServiceType")
-    private fun showNotification(title: String, content: String) {
+    internal fun showNotification(title: String, content: String) {
+        val manager : NotificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "music_channel"
         val channelName = "Music Channel"
 
@@ -67,21 +69,67 @@ class MusicService : Service() {
             manager?.createNotificationChannel(channel)
         }
 
+        val remoteView = RemoteViews(packageName, R.layout.custom_notificaiton)
+
+        remoteView.setTextViewText(R.id.notification_title, content)
+        remoteView.setImageViewResource(
+            R.id.notification_prev,
+            R.drawable.previous_back_direction_svgrepo_com
+        )
+        remoteView.setImageViewResource(
+            R.id.notification_play_pause,
+            if (mediaPlayer?.isPlaying == true) {
+                R.drawable.pause_svgrepo_com
+            } else {
+                R.drawable.play_svgrepo_com
+            }
+        )
+        remoteView.setImageViewResource(R.id.notification_next, R.drawable.next_svgrepo_com)
         val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) FLAG_IMMUTABLE else 0
 
-        val pendingIntentPrev = PendingIntent.getBroadcast(this, 0, Intent(ACTION_PREV), flag)
-        val pendingIntentNext = PendingIntent.getBroadcast(this, 1, Intent(ACTION_NEXT), flag)
-        val pendingIntentPlayPause = PendingIntent.getBroadcast(this, 2, Intent(ACTION_PLAY_PAUSE), flag)
+
+        remoteView.setOnClickPendingIntent(
+            R.id.notification_prev,
+            PendingIntent.getBroadcast(this, 0, Intent(ACTION_PREV), flag)
+        )
+
+
+        val playPauseIntent = PendingIntent.getBroadcast(this, 1, Intent(ACTION_PLAY_PAUSE), flag)
+
+        if (mediaPlayer?.isPlaying == true) {
+            remoteView.setImageViewResource(
+                R.id.notification_play_pause,
+                R.drawable.pause_svgrepo_com
+            )
+        } else {
+            remoteView.setImageViewResource(
+                R.id.notification_play_pause,
+                R.drawable.play_svgrepo_com
+            )
+        }
+
+        remoteView.setOnClickPendingIntent(R.id.notification_play_pause, playPauseIntent)
+
+
+
+
+        remoteView.setOnClickPendingIntent(
+            R.id.notification_next,
+            PendingIntent.getBroadcast(this, 2, Intent(ACTION_NEXT), flag)
+        )
 
         val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle(title)
-            .setContentText(content)
             .setSmallIcon(R.drawable.baseline_music_note_24)
-            .addAction(0, "Previous", pendingIntentPrev)
-            .addAction(0, "pause", pendingIntentPlayPause)
-            .addAction(0, "Next", pendingIntentNext)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(remoteView)
+            .setCustomBigContentView(remoteView)
+
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOngoing(true)
             .build()
+
+
+        manager.notify(1, notification)
 
         startForeground(1, notification)
     }
